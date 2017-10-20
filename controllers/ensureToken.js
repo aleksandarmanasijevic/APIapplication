@@ -8,16 +8,4 @@ module.exports = function (req, res, next) {
     }else{
         res.sendStatus(401).end('There was an error!');
     }
-    // console.log('TOKEN ENSURE!');
-    // next();
 };
-// jwt.verify(bearerToken, 'my_key')
-//     .then(function () {
-//         next();
-//     })
-//     .cache(function (err) {
-//         res.send(err);
-//     });
-// }else{
-//     res.sendStatus(401).end('There was an error!');
-// }

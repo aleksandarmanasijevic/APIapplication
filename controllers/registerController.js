@@ -9,51 +9,35 @@ var checkToken = require('./checkToken');
 router.use('/register', checkToken);
 
 router.post('/register', function (req, res) {
-    if(req.body.username != "" && typeof(req.body.username) != "undefined" &&
-        req.body.password != "" && typeof(req.body.password) != "undefined" &&
-        req.body.fullname != "" && typeof(req.body.fullname) != "undefined") {
+    if(req.body.username !== "" && typeof(req.body.username) !== "undefined" &&
+        req.body.password !== "" && typeof(req.body.password) !== "undefined" &&
+        req.body.fullname !== "" && typeof(req.body.fullname) !== "undefined") {
 
-        MongoClient.connect(url)
-            .then(function (db) { // <- db as first arg
-                const myobj = { username: req.body.username, password: passwordHash.generate(req.body.password), fullname: req.body.fullname };
-
-                db.collection("users").findOne({username: req.body.username})
-                    .then(function (result) { // <- db as first argument
-                        if(result == null) {
-                            db.collection("users").insertOne(myobj)
-                                .then(function (result) {
-                                    const tokenData = {
-                                        username: myobj.username,
-                                        password: myobj.password
-                                    };
-                                     res.status(200).json({token: jwt.sign(tokenData, 'my_key')});
-                                     console.log(jwt.sign(tokenData, 'my_key'));
-                                    db.close();
-                                })
-                                .catch(function (err) {
-                                    res.status(500).end('There was an error!');
-                                    db.close();
-                                });
-                        }else{
-                            res.status(500).end('Username already exists!');
-                            db.close();
-                        }
-                    })
-                    .catch(function (err) {
-                        res.end('There was an error!');
-                        db.close();
-                    });
-            })
-            .catch(function (err) {
-                res.end('DB connection error!');
-                db.close();
-            });
+        const myobj = { username: req.body.username, password: passwordHash.generate(req.body.password), fullname: req.body.fullname };
+        const dbP = MongoClient.connect(url);
+        const dbResultP = dbP.then(function (db) {
+            return db.collection("users").findOne({username: req.body.username})
+        });
+        const userP = Promise.all([dbP, dbResultP]).then(function (promises) {
+            if(promises[1] == null){
+                return promises[0].collection("users").insertOne(myobj);
+            }else{
+                res.status(500).end('There was an error!');
+                throw new Error('There was an error!');
+            }
+        });
+        Promise.all([dbP, dbResultP, userP]).then(function (promises) {
+            const tokenData = {
+                username: req.body.username,
+                password: req.body.password
+            };
+            res.json({token: jwt.sign(tokenData, 'my_key')});
+            promises[0].close();
+        }).catch(function () {
+            res.end('There was an error!');
+        });
     }else{
         res.end('Invald parameters!');
     }
 });
 module.exports = router;
-
-
-// return db.collection("users").findOne({username: req.body.username})
-// }).then(result

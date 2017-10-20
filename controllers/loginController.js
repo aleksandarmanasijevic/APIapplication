@@ -9,19 +9,20 @@ var jwt = require('jsonwebtoken');
 router.use('/login', checkToken);
 
 router.post('/login', function (req, res) {
-    if(req.body.username != "" && typeof(req.body.username) != "undefined" &&
-        req.body.password != "" && typeof(req.body.password) != "undefined") {
+    if(req.body.username !== "" && typeof(req.body.username) !== "undefined" &&
+        req.body.password !== "" && typeof(req.body.password) !== "undefined") {
 
         MongoClient.connect(url)
             .then(function (db) { // <- db as first arg
                 db.collection("users").findOne({username: req.body.username})
                     .then(function (result) { // <- db as first argument
                         if(result != null && passwordHash.verify(req.body.password, result.password)) {
-                            var tokenData = {
+                            const tokenData = {
                                 username: req.body.username,
                                 password: req.body.password
                             };
                             res.json({token: jwt.sign(tokenData, 'my_key')});
+                            console.log(jwt.verify(jwt.sign(tokenData, 'my_key'), 'my_key'));
                         }else{
                             // user doesn't exist
                             res.end('User doesn\'t exists!');
