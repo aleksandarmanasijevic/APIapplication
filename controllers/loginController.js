@@ -12,31 +12,26 @@ router.post('/login', function (req, res) {
     if(req.body.username !== "" && typeof(req.body.username) !== "undefined" &&
         req.body.password !== "" && typeof(req.body.password) !== "undefined") {
 
-        MongoClient.connect(url)
-            .then(function (db) { // <- db as first arg
-                db.collection("users").findOne({username: req.body.username})
-                    .then(function (result) { // <- db as first argument
-                        if(result != null && passwordHash.verify(req.body.password, result.password)) {
-                            const tokenData = {
-                                username: req.body.username,
-                                password: req.body.password
-                            };
-                            res.json({token: jwt.sign(tokenData, 'my_key')});
-                            console.log(jwt.verify(jwt.sign(tokenData, 'my_key'), 'my_key'));
-                        }else{
-                            // user doesn't exist
-                            res.end('User doesn\'t exists!');
-                        }
-                        db.close();
-                    })
-                    .catch(function (err) {
-                        res.end('There was an error!' + err);
-                        db.close();
-                    })
-            })
-            .catch(function (err) {
-                res.end('There was an error!');
-            })
+        const dbP = MongoClient.connect(url).then(function (db) {
+            return db.collection("users").findOne({username: req.body.username});
+        });
+        const resP = dbP.then(function (result) {
+            if(result != null && passwordHash.verify(req.body.password, result.password)) {
+                const tokenData = {
+                    username: req.body.username,
+                    password: req.body.password
+                };
+                res.json({token: jwt.sign(tokenData, 'my_key')});
+            }else{
+                res.end('User with that username or password doesn\'t exists!');
+            }
+        });
+        Promise.all([dbP,resP]).then(function (promises) {
+            dbP.close();
+        }).catch(function (err) {
+            res.sendStatus(500);
+            dbP.close();
+        });
     }else{
         res.end('There was an error!');
     }
